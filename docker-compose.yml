@@ -1,0 +1,140 @@
+# Por que contenedores y no maquinas virtuales:
+#   - Arranque en segundos vs minutos, podemos escalar en caliente durante la
+#     demo (`--scale queue=3`) y mostrar el balanceo en vivo.
+#   - Imagen inmutable: lo que corre en la maquina del profesor es byte a byte
+#     lo mismo que corre en la nuestra (facilidad de despliegue).
+#   - Densidad: 9 procesos aislados en una notebook. Con VMs necesitariamos 9
+#     sistemas operativos completos.
+
+name: clinicare-tfu
+
+x-servicio-node: &servicio-node
+  build: .
+  restart: unless-stopped
+  networks: [clinicare]
+  environment: &entorno-comun
+    NODE_ENV: production
+    PORT: 3000
+    PGHOST: postgres
+    PGPORT: 5432
+    PGUSER: clinicare
+    PGPASSWORD: clinicare
+    PGDATABASE: clinicare
+    PG_POOL_MAX: 8
+    REDIS_URL: redis://redis:6379
+    JWT_SECRET: secreto-tfu-ut3-2026
+    INTERNAL_TOKEN: token-interno-tfu
+    AVISO_POSICION: 2
+  depends_on:
+    postgres:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+
+services:
+
+  # PERSISTENCIA ACID
+  postgres:
+    image: postgres:16-alpine
+    networks: [clinicare]
+    environment:
+      POSTGRES_USER: clinicare
+      POSTGRES_PASSWORD: clinicare
+      POSTGRES_DB: clinicare
+    volumes:
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - datos-pg:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"        # publicado solo para inspeccionar la base en la demo
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U clinicare -d clinicare"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+
+  # PERSISTENCIA BASE (cola hibrida + notificaciones + stream de eventos)
+  redis:
+    image: redis:7-alpine
+    networks: [clinicare]
+    # appendonly no: priorizamos latencia sobre durabilidad. La cola es estado
+    # blando (soft state) del dia; si se pierde, se reconstruye desde PostgreSQL.
+    command: ["redis-server", "--appendonly", "no", "--save", ""]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  # COMPONENTES DE NEGOCIO (todos sin estado -> replicables)
+  auth:
+    <<: *servicio-node
+    command: ["node", "src/services/auth/index.js"]
+    environment:
+      <<: *entorno-comun
+      SERVICE_NAME: auth-service
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/healthz"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  scheduling:
+    <<: *servicio-node
+    command: ["node", "src/services/scheduling/index.js"]
+    environment:
+      <<: *entorno-comun
+      SERVICE_NAME: scheduling-service
+
+  records:
+    <<: *servicio-node
+    command: ["node", "src/services/records/index.js"]
+    environment:
+      <<: *entorno-comun
+      SERVICE_NAME: records-service
+
+  pharmacy:
+    <<: *servicio-node
+    command: ["node", "src/services/pharmacy/index.js"]
+    environment:
+      <<: *entorno-comun
+      SERVICE_NAME: pharmacy-service
+
+  queue:
+    <<: *servicio-node
+    command: ["node", "src/services/queue/index.js"]
+    environment:
+      <<: *entorno-comun
+      SERVICE_NAME: queue-service
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+
+  notifications:
+    <<: *servicio-node
+    command: ["node", "src/services/notifications/index.js"]
+    environment:
+      <<: *entorno-comun
+      SERVICE_NAME: notifications-service
+
+
+  gateway:
+    image: nginx:1.27-alpine
+    networks: [clinicare]
+    ports:
+      - "8080:80"          # lo unico visible desde afuera
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on: [auth, scheduling, records, pharmacy, queue, notifications]
+
+networks:
+  clinicare:
+    driver: bridge
+
+volumes:
+  datos-pg:
