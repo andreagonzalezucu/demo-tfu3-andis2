@@ -6,7 +6,7 @@
  
 ```bash
 docker compose ps          # todo "Up (healthy)"
-curl -s http://localhost:8080/healthz   # {"ok":true...}
+curl.exe -s http://localhost:8080/healthz  # {"ok":true...}
 chmod +x scripts/*.sh
 ./scripts/01-flujo-completo.sh > /dev/null   # correr una vez ANTES, en silencio,
                                               # para que ya haya datos de prueba cargados
