@@ -25,12 +25,12 @@ Todo se accede por el gateway: http://localhost:8080
 
     chmod +x scripts/*.sh
     ./scripts/00-smoke.sh            # todo arriba
-    ./scripts/01-flujo-completo.sh   # componentes e interfaces
-    ./scripts/02-sin-estado.sh       # servicios sin estado
-    ./scripts/03-escalabilidad.sh    # escalabilidad horizontal
-    ./scripts/04-acid.sh             # transacciones ACID
-    ./scripts/05-base.sh             # consistencia eventual (BASE)
-    ./scripts/06-notificaciones.sh   # pub/sub entre componentes
+    ./scripts/1-flujoCompleto.sh   # componentes e interfaces
+    ./scripts/2-sinEstado.sh       # servicios sin estado
+    ./scripts/3-escalabilidad.sh    # escalabilidad horizontal
+    ./scripts/4-acid.sh             # transacciones ACID
+    ./scripts/5-base.sh             # consistencia eventual (BASE)
+    ./scripts/6-notificaciones.sh   # pub/sub entre componentes
 
 ## Escalar a mano
 

@@ -8,7 +8,7 @@
 docker compose ps          # todo "Up (healthy)"
 curl.exe -s http://localhost:8080/healthz  # {"ok":true...}
 chmod +x scripts/*.sh
-./scripts/01-flujo-completo.sh > /dev/null   # correr una vez ANTES, en silencio,
+./scripts/1-flujo-completo.sh > /dev/null   # correr una vez ANTES, en silencio,
                                               # para que ya haya datos de prueba cargados
 ```
  
@@ -41,7 +41,7 @@ docker compose ps
  
 **Hacer:**
 ```bash
-./scripts/01-flujo-completo.sh
+& "C:\Program Files\Git\bin\bash.exe" ./scripts/1-flujoCompleto.sh
 ```
  
 **Ir señalando cada bloque de la salida:**
@@ -71,7 +71,7 @@ docker compose ps
  
 **Mostrar:**
 ```bash
-cat Dockerfile | head -20
+cat Dockerfile | select -first 20
 ```
 
 > "Es una sola imagen para todos los componentes de negocio — cambia solo el comando de arranque. Está justificado en el documento de la Parte 1, junto con el análisis de qué pasaría si tuviéramos que usar máquinas virtuales."
@@ -83,7 +83,7 @@ cat Dockerfile | head -20
  
 **Hacer:**
 ```bash
-./scripts/02-sin-estado.sh
+& "C:\Program Files\Git\bin\bash.exe" ./scripts/2-sinEstado.sh  
 ```
  
 **Señalar durante la ejecución:**
@@ -101,7 +101,7 @@ cat Dockerfile | head -20
  
 **Hacer:**
 ```bash
-./scripts/03-escalabilidad.sh
+& "C:\Program Files\Git\bin\bash.exe" ./scripts/3-escalabilidad.sh
 ```
  
 **Señalar:**
@@ -119,7 +119,7 @@ cat Dockerfile | head -20
  
 **Hacer:**
 ```bash
-./scripts/04-acid.sh
+& "C:\Program Files\Git\bin\bash.exe" ./scripts/4-acid.sh
 ```
  
 **Señalar:**
@@ -135,7 +135,7 @@ cat Dockerfile | head -20
  
 **Hacer:**
 ```bash
-./scripts/05-base.sh
+& "C:\Program Files\Git\bin\bash.exe" ./scripts/5-base.sh
 ```
  
 **Señalar:**
