@@ -24,7 +24,7 @@ Todo se accede por el gateway: http://localhost:8080
 ## Demos (en este orden)
 
     chmod +x scripts/*.sh
-    ./scripts/00-smoke.sh            # todo arriba
+    ./scripts/0-smoke.sh            # todo arriba
     ./scripts/1-flujoCompleto.sh   # componentes e interfaces
     ./scripts/2-sinEstado.sh       # servicios sin estado
     ./scripts/3-escalabilidad.sh    # escalabilidad horizontal
