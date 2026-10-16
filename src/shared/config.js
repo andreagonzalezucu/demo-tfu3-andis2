@@ -45,11 +45,66 @@ const config = {
     scheduling: process.env.SCHEDULING_URL || 'http://scheduling:3000',
     records:    process.env.RECORDS_URL    || 'http://records:3000',
     pharmacy:   process.env.PHARMACY_URL   || 'http://pharmacy:3000',
-    queue:      process.env.QUEUE_URL      || 'http://queue:3000'
+    queue:      process.env.QUEUE_URL      || 'http://queue:3000',
+    notifications: process.env.NOTIFICATIONS_URL || 'http://notifications:3000'
   },
 
   // A cuantas posiciones del frente se le avisa al paciente que se acerque.
-  avisoPosicion: parseInt(process.env.AVISO_POSICION || '2', 10)
+  avisoPosicion: parseInt(process.env.AVISO_POSICION || '2', 10),
+
+  // ---------------------------------------------------------------------------
+  // PATRON: CIRCUIT BREAKER (+ Retry)  -> atributo de calidad: DISPONIBILIDAD
+  //
+  // Evita el efecto cascada: si una dependencia (por ejemplo records-service)
+  // se cuelga, cada llamada esperaria el timeout completo y agotaria las
+  // conexiones del llamador. El breaker corta de inmediato tras N fallos
+  // consecutivos. El estado vive en memoria del proceso (una replica no le
+  // cuenta a otra): es aceptable porque es una optimizacion, no un dato.
+  // ---------------------------------------------------------------------------
+  circuitBreaker: {
+    failureThreshold: parseInt(process.env.CB_FAILURE_THRESHOLD || '5', 10),
+    openMs: parseInt(process.env.CB_OPEN_MS || '10000', 10),
+    // Los reintentos SOLO aplican a metodos idempotentes (GET). Reintentar un
+    // POST podria duplicar una operacion (doble retiro, doble cita).
+    retries: parseInt(process.env.CB_RETRIES || '2', 10),
+    retryBaseMs: parseInt(process.env.CB_RETRY_BASE_MS || '100', 10)
+  },
+
+  // ---------------------------------------------------------------------------
+  // PATRON: CACHE-ASIDE  -> atributo de calidad: PERFORMANCE
+  //
+  // Redis guarda copias de lecturas caras (catalogos, cupos). El cache NUNCA
+  // puede tumbar el endpoint: ante cualquier error de Redis se degrada a
+  // PostgreSQL (X-Cache: BYPASS). timeoutMs corta el get/set si Redis esta
+  // colgado en vez de esperar el timeout TCP completo.
+  // ---------------------------------------------------------------------------
+  cache: {
+    enabled: process.env.CACHE_ENABLED !== 'false',
+    ttlCatalogo: parseInt(process.env.CACHE_TTL_CATALOGO || '300', 10),
+    ttlSlots: parseInt(process.env.CACHE_TTL_SLOTS || '30', 10),
+    timeoutMs: parseInt(process.env.CACHE_TIMEOUT_MS || '200', 10)
+  },
+
+  // ---------------------------------------------------------------------------
+  // PATRON: GATEKEEPER  -> atributo de calidad: SEGURIDAD (defensa en profundidad)
+  //
+  // El gatekeeper es la unica puerta de entrada al sistema. Los componentes
+  // confian en el JWT pero ADEMAS exigen ver la marca del gatekeeper para
+  // rechazar el acceso directo (bypass) a la red interna.
+  // ---------------------------------------------------------------------------
+  gatekeeperToken: process.env.GATEKEEPER_TOKEN || 'gatekeeper-dev-token',
+  gatekeeperOnly: process.env.GATEKEEPER_ONLY !== 'false',
+  gatekeeperMaxBody: process.env.GATEKEEPER_MAX_BODY || '100kb',
+
+  // ---------------------------------------------------------------------------
+  // PATRON: QUEUE-BASED LOAD LEVELING  -> atributo de calidad: PERFORMANCE
+  //
+  // El stream de eventos se recorta para acotar la memoria de Redis. El
+  // consumidor puede simularse lento (CONSUMER_DELAY_MS) para hacer visible el
+  // desacople temporal entre productor y consumidor.
+  // ---------------------------------------------------------------------------
+  streamMaxlen: parseInt(process.env.STREAM_MAXLEN || '10000', 10),
+  consumerDelayMs: parseInt(process.env.CONSUMER_DELAY_MS || '0', 10)
 };
 
 module.exports = config;
